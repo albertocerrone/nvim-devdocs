@@ -1,10 +1,10 @@
 local M = {}
 
 local path = require("plenary.path")
-local config = require("nvim-devdocs").config
+local plugin_config = require("nvim-devdocs.config").get()
 
 M.get_all = function(arg_lead, _, _)
-  local registery_path = path:new(config.dir_path, "registery.json")
+  local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
   if not registery_path:exists() then return {} end
 
