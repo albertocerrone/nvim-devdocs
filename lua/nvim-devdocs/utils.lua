@@ -1,18 +1,16 @@
 local M = {}
 
-local job = require("plenary.job")
+local Job = require("plenary.job")
 
 M.fetch_async = function(url, callback)
-  job
-    :new({
-      command = "curl",
-      args = { "-L", "-f", "-s", url },
-      on_exit = function(job, code)
-        assert(code == 0, string.format("GET %s failed", url))
-        callback(job:result())
-      end,
-    })
-    :start()
+  Job:new({
+    command = "curl",
+    args = { "-L", "-f", "-s", url },
+    on_exit = function(job, code)
+      assert(code == 0, string.format("GET %s failed", url))
+      callback(job:result())
+    end,
+  }):start()
 end
 
 M.format_entry = function(entry)
