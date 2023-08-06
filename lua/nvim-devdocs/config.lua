@@ -2,6 +2,7 @@ local M = {}
 
 local config = {
   dir_path = vim.fn.expand("$HOME/.local/share/nvim/devdocs"),
+  telescope = {},
 }
 
 M.get = function() return config end

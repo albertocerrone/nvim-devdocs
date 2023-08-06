@@ -12,7 +12,7 @@ local operations = require("nvim-devdocs.operations")
 local plugin_config = require("nvim-devdocs.config").get()
 local utils = require("nvim-devdocs.utils")
 
-local telescope_opts = {}
+local telescope_opts = plugin_config.telescope
 
 M.installation_picker = function()
   local content = path:new(plugin_config.dir_path, "registery.json"):read()
@@ -45,12 +45,16 @@ M.installation_picker = function()
         actions.select_default:replace(function(prompt_bufnr)
           actions.close(prompt_bufnr)
           local selection = action_state.get_selected_entry()
-          operations.install_doc(selection.value)
+          operations.install(selection.value)
         end)
         return true
       end,
     })
     :find()
+end
+
+M.uninstallation_picker = function()
+  -- TODO
 end
 
 return M

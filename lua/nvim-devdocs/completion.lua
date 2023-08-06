@@ -2,6 +2,7 @@ local M = {}
 
 local path = require("plenary.path")
 
+local list = require("nvim-devdocs.list")
 local plugin_config = require("nvim-devdocs.config").get()
 
 M.get_all = function(arg_lead, _, _)
@@ -18,6 +19,17 @@ M.get_all = function(arg_lead, _, _)
     local starts_with = string.find(arg, arg_lead, 1, true) == 1
     if starts_with then table.insert(args, arg) end
   end
+
+  return args
+end
+
+M.get_installed = function(arg_lead)
+  local installed = list.get_installed()
+  local args = vim.tbl_filter(function(entry)
+    local starts_with = string.find(entry, arg_lead, 1, true) == 1
+    if starts_with then return true end
+    return false
+  end, installed)
 
   return args
 end

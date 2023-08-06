@@ -6,10 +6,10 @@ local utils = require("nvim-devdocs.utils")
 local plugin_config = require("nvim-devdocs.config").get()
 
 local devdocs_cdn_url = "https://documents.devdocs.io"
+local docs_dir = path:new(plugin_config.dir_path, "docs")
 
-M.install_doc = function(entry)
+M.install = function(entry)
   local alias = entry.slug:gsub("~", "-")
-  local docs_dir = path:new(plugin_config.dir_path, "docs")
   local file_path = path:new(docs_dir, alias .. ".json")
 
   if not docs_dir:exists() then docs_dir:mkdir() end
@@ -24,6 +24,17 @@ M.install_doc = function(entry)
       file_path:write(res, "w", 438)
       utils.log("Documentation for " .. alias .. " has been installed")
     end)
+  end
+end
+
+M.uninstall = function(entry)
+  local file_path = path:new(docs_dir, entry .. ".json")
+
+  if not file_path:exists() then
+    utils.log(entry .. " documentation is already uninstalled")
+  else
+    file_path:rm()
+    utils.log(entry .. " documentation has been uninstalled")
   end
 end
 

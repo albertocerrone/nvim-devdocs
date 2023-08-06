@@ -4,9 +4,8 @@ local path = require("plenary.path")
 
 local utils = require("nvim-devdocs.utils")
 local pickers = require("nvim-devdocs.pickers")
-local config = require("nvim-devdocs.config")
 local operations = require("nvim-devdocs.operations")
-local plugin_config = config.get()
+local plugin_config = require("nvim-devdocs.config").get()
 
 local devdocs_site_url = "https://devdocs.io"
 
@@ -24,7 +23,7 @@ M.get_available_docs = function()
   end)
 end
 
-M.install = function(args)
+M.install_doc = function(args)
   local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
   if not registery_path:exists() then
@@ -51,8 +50,14 @@ M.install = function(args)
     if vim.tbl_isempty(data) then
       utils.log("No documentation available for " .. arg)
     else
-      operations.install_doc(data)
+      operations.install(data)
     end
+  end
+end
+
+M.uninstall_doc = function(args)
+  for _, arg in pairs(args.fargs) do
+    operations.uninstall(arg)
   end
 end
 
