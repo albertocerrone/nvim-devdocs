@@ -1,9 +1,15 @@
-local nvim_devdocs = require("nvim-devdocs")
-local completion = require("nvim-devdocs.completion")
+local M = require("nvim-devdocs")
 
-local cmd = vim.api.nvim_create_user_command
+M.setup = function(opts)
+  local config = require("nvim-devdocs.config")
+  local completion = require("nvim-devdocs.completion")
 
-cmd("DevdocsFetch", nvim_devdocs.get_available_docs, {})
-cmd("DevdocsInstall", nvim_devdocs.install, { nargs = "*", complete = completion.get_all })
+  config.setup(opts)
 
-return nvim_devdocs
+  local cmd = vim.api.nvim_create_user_command
+
+  cmd("DevdocsFetch", M.get_available_docs, {})
+  cmd("DevdocsInstall", M.install, { nargs = "*", complete = completion.get_all })
+end
+
+return M
