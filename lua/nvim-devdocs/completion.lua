@@ -1,6 +1,7 @@
 local M = {}
 
 local path = require("plenary.path")
+
 local plugin_config = require("nvim-devdocs.config").get()
 
 M.get_all = function(arg_lead, _, _)
@@ -13,7 +14,7 @@ M.get_all = function(arg_lead, _, _)
   local args = {}
 
   for _, entry in pairs(parsed) do
-    local arg = string.gsub(entry.slug, "~", "-")
+    local arg = entry.slug:gsub("~", "-")
     local starts_with = string.find(arg, arg_lead, 1, true) == 1
     if starts_with then table.insert(args, arg) end
   end
