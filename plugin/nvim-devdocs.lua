@@ -10,7 +10,7 @@ M.setup = function(opts)
 
   cmd("DevdocsFetch", M.get_available_docs, {})
   cmd("DevdocsInstall", M.install_doc, { nargs = "*", complete = completion.get_all })
-  cmd("DevdocsUninstall", M.uninstall_doc, { nargs = "+", complete = completion.get_installed })
+  cmd("DevdocsUninstall", M.uninstall_doc, { nargs = "*", complete = completion.get_installed })
 end
 
 return M

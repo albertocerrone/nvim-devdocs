@@ -2,7 +2,9 @@ local M = {}
 
 local path = require("plenary.path")
 local scandir = require("plenary.scandir")
+
 local plugin_config = require("nvim-devdocs.config").get()
+local utils = require("nvim-devdocs.utils")
 
 local docs_dir = path:new(plugin_config.dir_path, "docs")
 
@@ -21,7 +23,25 @@ M.get_installed = function()
 end
 
 M.get_installed_entry = function()
-  -- TODO
+  local registery_path = path:new(plugin_config.dir_path, "registery.json")
+
+  if not registery_path:exists() then
+    utils.log_err("Devdocs registery not found, please run :DevdocsFetch")
+    return
+  end
+
+  local content = registery_path:read()
+  local parsed = vim.fn.json_decode(content)
+  local installed = M.get_installed()
+
+  local resuts = vim.tbl_filter(function(entry)
+    for _, alias in pairs(installed) do
+      if entry.slug == alias:gsub("-", "~") then return true end
+    end
+    return false
+  end, parsed)
+
+  return resuts
 end
 
 return M

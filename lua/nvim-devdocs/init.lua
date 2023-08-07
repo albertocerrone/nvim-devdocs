@@ -56,6 +56,8 @@ M.install_doc = function(args)
 end
 
 M.uninstall_doc = function(args)
+  if vim.tbl_isempty(args.fargs) then pickers.uninstallation_picker() end
+
   for _, arg in pairs(args.fargs) do
     operations.uninstall(arg)
   end

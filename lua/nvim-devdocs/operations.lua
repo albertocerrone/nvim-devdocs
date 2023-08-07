@@ -27,14 +27,14 @@ M.install = function(entry)
   end
 end
 
-M.uninstall = function(entry)
-  local file_path = path:new(docs_dir, entry .. ".json")
+M.uninstall = function(alias)
+  local file_path = path:new(docs_dir, alias .. ".json")
 
   if not file_path:exists() then
-    utils.log(entry .. " documentation is already uninstalled")
+    utils.log(alias .. " documentation is already uninstalled")
   else
     file_path:rm()
-    utils.log(entry .. " documentation has been uninstalled")
+    utils.log(alias .. " documentation has been uninstalled")
   end
 end
 
