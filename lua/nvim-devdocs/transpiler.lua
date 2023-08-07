@@ -1,18 +1,10 @@
 M = {}
 
 local normalize_html = function(str)
-  local subs = {
-    ["&copy;"] = "©",
-    ["&ndash;"] = "–",
-    ["&lt;"] = "<",
-    ["<a.*>(.*)</a>"] = "%1",
-    ["<br>"] = "",
-    ["\n *"] = " ",
-  }
-
-  for pattern, repl in pairs(subs) do
-    str = string.gsub(str, pattern, repl)
-  end
+  str = str:gsub("&copy;", "©")
+  str = str:gsub("&ndash;", "–")
+  str = str:gsub("&lt;", "<")
+  str = str:gsub("&gt;", ">")
 
   return str
 end
@@ -21,7 +13,12 @@ M.to_yaml = function(entry)
   local lines = {}
 
   for key, value in pairs(entry) do
-    if key == "attribution" then value = normalize_html(value) end
+    if key == "attribution" then
+      value = normalize_html(value)
+      value = value:gsub("<a.*>(.*)</a>", "%1")
+      value = value:gsub("<br>", "")
+      value = value:gsub("\n *", " ")
+    end
     if key == "links" then value = vim.fn.json_encode(value) end
     table.insert(lines, key .. ": " .. value)
   end
@@ -29,54 +26,108 @@ M.to_yaml = function(entry)
   return lines
 end
 
+local tag_mappings = {
+  h1 = { left = "# ", right = "\n" },
+  h2 = { left = "## ", right = "\n" },
+  h3 = { left = "### ", right = "\n" },
+  h4 = { left = "#### ", right = "\n" },
+  h5 = { left = "##### ", right = "\n" },
+  h6 = { left = "###### ", right = "\n" },
+  div = { right = "\n" },
+  p = { right = "\n" },
+  span = {},
+  code = { left = "```", right = "```" },
+  strong = { left = "**", right = "**" },
+  em = { left = "_", right = "_" },
+  sup = { left = "^", right = "^" },
+  blockquote = { left = "> " },
+
+  br = { right = "\n" },
+  hr = { right = "---" },
+}
+
 M.html_to_md = function(html)
-  -- TODO: find a better way
-  html = html:gsub("<p.->(.-)</p>", "%1\n")
-  html = html:gsub("<p.->", "")
+  local transpiler = {
+    parser = vim.treesitter.get_string_parser(html, "html"),
+    lines = vim.split(html, "\n"),
+    result = "",
+  }
 
-  html = html:gsub("<h1.->(.-)</h1>", "# %1\n")
-  html = html:gsub("<h2.->(.-)</h2>", "## %1\n")
-  html = html:gsub("<h3.->(.-)</h3>", "### %1\n")
-  html = html:gsub("<h4.->(.-)</h4>", "#### %1\n")
-  html = html:gsub("<h5.->(.-)</h5>", "##### %1\n")
-  html = html:gsub("<h6.->(.-)</h6>", "###### %1\n")
+  ---@param node TSNode
+  function transpiler:extract_node_text(node)
+    local row_start, col_start = node:start()
+    local row_end, col_end = node:end_()
+    local extracted_lines = {}
 
-  html = html:gsub("<ul>(.-)</ul>", function(list)
-    list = list:gsub("<li>(.-)</li>", "- %1")
-    return list
-  end)
-  html = html:gsub("<ol>(.-)</ol>", function(list)
-    local counter = 1
-    list = list:gsub("<li>(.-)</li>", function(item)
-      counter = counter + 1
-      return counter - 1 .. ". " .. item
+    for i = row_start, row_end do
+      local line = self.lines[i + 1]
+
+      if row_start == row_end then
+        line = line:sub(col_start + 1, col_end)
+      elseif i == row_start then
+        line = line:sub(col_start + 1)
+      elseif i == row_end then
+        line = line:sub(1, col_end)
+      end
+
+      table.insert(extracted_lines, line)
+    end
+
+    return table.concat(extracted_lines, "\n")
+  end
+
+  function transpiler:transpile()
+    self.parser:parse()
+    self.parser:for_each_tree(function(tree)
+      local root = tree:root()
+
+      if root then
+        local children = root:named_children()
+
+        for _, node in pairs(children) do
+          self.result = self.result .. self:eval(node)
+        end
+      end
     end)
-    return list
-  end)
 
-  html = html:gsub('<a href="(.-)">(.-)</a>', "[%2](%1)")
-  html = html:gsub("<a href='(.-)'>(.-)</a>", "[%2](%1)")
-  html = html:gsub('<img%s+src="(.-)"%s+alt="(.-)"[^>]*>', "![%2](%1)")
-  html = html:gsub("<img%s+src='(.-)'%s+alt='(.-)'[^>]*>", "![%2](%1)")
+    return self.result
+  end
 
-  html = html:gsub("<strong>(.-)</strong>", "**%1**")
-  html = html:gsub("<em>(.-)</em>", "_%1_")
-  html = html:gsub("<pre><code>(.-)</code></pre>", "```\n%1\n```")
-  html = html:gsub("<blockquote>(.-)</blockquote>", "> %1\n")
-  html = html:gsub("<sup>(.-)</sup>", "^%1^")
+  ---@param node TSNode
+  function transpiler:eval(node)
+    local result = ""
+    local node_type = node:type()
+    local node_text = self:extract_node_text(node)
 
-  html = html:gsub("<code>(.-)</code>", "`%1`")
+    if node_type == "text" then
+      result = result .. normalize_html(node_text)
+    elseif node_type == "element" then
+      local children = node:named_children()
+      local children_count = node:named_child_count()
+      local tag_node = children[1]
+      local tag_type = tag_node:type()
+      local tag_name = self:extract_node_text(tag_node:named_child())
 
-  html = html:gsub("<br>", "\n")
-  html = html:gsub("<hr>", "\n---\n")
+      if tag_type == "start_tag" then
+        for i = 2, children_count - 1 do
+          result = result .. self:eval(children[i])
+        end
+      end
 
-  html = html:gsub("\n\n\n", "\n\n")
-  html = html:gsub("&copy;", "©")
-  html = html:gsub("&ndash;", "–")
-  html = html:gsub("&lt;", "<")
-  html = html:gsub("&gt;", "<")
+      local map = tag_mappings[tag_name]
+      if map then
+        local left = map.left and map.left or ""
+        local right = map.right and map.right or ""
+        result = left .. result .. right
+      else
+        result = result .. node_text
+      end
+    end
 
-  return html
+    return result
+  end
+
+  return transpiler:transpile()
 end
 
 return M
