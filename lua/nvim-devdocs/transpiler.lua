@@ -34,6 +34,7 @@ local tag_mappings = {
   h5 = { left = "##### ", right = "\n" },
   h6 = { left = "###### ", right = "\n" },
   div = { right = "\n" },
+  section = { right = "\n" },
   p = { right = "\n" },
   span = {},
   code = { left = "```", right = "```" },
@@ -103,24 +104,40 @@ M.html_to_md = function(html)
       result = result .. normalize_html(node_text)
     elseif node_type == "element" then
       local children = node:named_children()
-      local children_count = node:named_child_count()
       local tag_node = children[1]
+      local tag_children = tag_node:named_children()
       local tag_type = tag_node:type()
       local tag_name = self:extract_node_text(tag_node:named_child())
+      local attributes = {}
+
+      for i = 2, #tag_children do
+        local attribute_node = tag_children[i]
+        local attribute_name_node = attribute_node:named_child()
+        local attribute_name = self:extract_node_text(attribute_name_node)
+        local value_node = attribute_name_node:next_named_sibling():named_child()
+        local value = self:extract_node_text(value_node)
+        attributes[attribute_name] = value
+      end
 
       if tag_type == "start_tag" then
-        for i = 2, children_count - 1 do
+        for i = 2, #children - 1 do
           result = result .. self:eval(children[i])
         end
       end
 
-      local map = tag_mappings[tag_name]
-      if map then
-        local left = map.left and map.left or ""
-        local right = map.right and map.right or ""
-        result = left .. result .. right
+      if tag_name == "a" then
+        result = string.format("[%s](%s)", result, attributes.href)
+      elseif tag_name == "pre" and attributes["data-language"] then
+        result = "```" .. attributes["data-language"] .. "\n" .. result .. "\n```"
       else
-        result = result .. node_text
+        local map = tag_mappings[tag_name]
+        if map then
+          local left = map.left and map.left or ""
+          local right = map.right and map.right or ""
+          result = left .. result .. right
+        else
+          result = result .. node_text
+        end
       end
     end
 
