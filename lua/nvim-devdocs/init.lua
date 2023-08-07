@@ -48,7 +48,7 @@ M.install_doc = function(args)
     end
 
     if vim.tbl_isempty(data) then
-      utils.log("No documentation available for " .. arg)
+      utils.log_err("No documentation available for " .. arg)
     else
       operations.install(data)
     end
@@ -60,6 +60,30 @@ M.uninstall_doc = function(args)
 
   for _, arg in pairs(args.fargs) do
     operations.uninstall(arg)
+  end
+end
+
+M.open_doc = function(args)
+  if vim.tbl_isempty(args.fargs) then
+    -- TODO
+  else
+    local arg = args.fargs[1]
+    local file_path = path:new(plugin_config.dir_path, "docs", arg .. ".json")
+
+    if not file_path:exists() then
+      utils.log_err(arg .. " documentation is not installed")
+      return
+    end
+
+    local content = file_path:read()
+    local decoded = vim.fn.json_decode(content)
+    local entries = {}
+
+    for key, value in pairs(decoded) do
+      table.insert(entries, { key = key, value = value })
+    end
+
+    pickers.open_doc_entry_picker(entries)
   end
 end
 
