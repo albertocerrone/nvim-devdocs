@@ -1,7 +1,7 @@
 local M = {}
 
 local config = {
-  dir_path = vim.fn.expand("$HOME/.local/share/nvim/devdocs"),
+  dir_path = vim.fn.stdpath("data") .. "/devdocs",
   telescope = {},
   ensure_installed = {},
 }
