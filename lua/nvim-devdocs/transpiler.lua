@@ -5,6 +5,7 @@ local normalize_html = function(str)
   str = str:gsub("&ndash;", "–")
   str = str:gsub("&lt;", "<")
   str = str:gsub("&gt;", ">")
+  str = str:gsub("&amp;", "&")
 
   return str
 end
@@ -23,7 +24,7 @@ M.to_yaml = function(entry)
     table.insert(lines, key .. ": " .. value)
   end
 
-  return lines
+  return table.concat(lines, "\n")
 end
 
 local tag_mappings = {
@@ -36,10 +37,22 @@ local tag_mappings = {
   div = { right = "\n" },
   section = { right = "\n" },
   p = { right = "\n" },
+  ul = { right = "\n" },
+  ol = { right = "\n" },
+  dl = { right = "\n" },
+  dt = { right = "\n" },
+  figure = { right = "\n" },
+  dd = { left = ": " },
   span = {},
-  code = { left = "```", right = "```" },
+  header = {},
+  pre = { left = "```", right = "```" },
+  code = { left = "`", right = "`" },
+  samp = { left = "`", right = "`" },
+  var = { left = "`", right = "`" },
+  kbd = { left = "`", right = "`" },
   strong = { left = "**", right = "**" },
-  em = { left = "_", right = "_" },
+  em = { left = " _", right = "_ " },
+  small = { left = " _", right = "_ " },
   sup = { left = "^", right = "^" },
   blockquote = { left = "> " },
 
@@ -100,7 +113,7 @@ M.html_to_md = function(html)
     local node_type = node:type()
     local node_text = self:extract_node_text(node)
 
-    if node_type == "text" then
+    if node_type == "text" or node_type == "entity" then
       result = result .. normalize_html(node_text)
     elseif node_type == "element" then
       local children = node:named_children()
@@ -114,8 +127,11 @@ M.html_to_md = function(html)
         local attribute_node = tag_children[i]
         local attribute_name_node = attribute_node:named_child()
         local attribute_name = self:extract_node_text(attribute_name_node)
-        local value_node = attribute_name_node:next_named_sibling():named_child()
-        local value = self:extract_node_text(value_node)
+        local value = ""
+        if attribute_name_node:next_named_sibling() then
+          local value_node = attribute_name_node:next_named_sibling():named_child()
+          value = self:extract_node_text(value_node)
+        end
         attributes[attribute_name] = value
       end
 
@@ -127,8 +143,34 @@ M.html_to_md = function(html)
 
       if tag_name == "a" then
         result = string.format("[%s](%s)", result, attributes.href)
+      elseif tag_name == "img" then
+        result = string.format("![%s](%s)", attributes.alt, attributes.src)
       elseif tag_name == "pre" and attributes["data-language"] then
-        result = "```" .. attributes["data-language"] .. "\n" .. result .. "\n```"
+        result = "```" .. attributes["data-language"] .. "\n" .. result .. "\n```\n"
+      elseif tag_name == "li" then
+        local parent_node = node:parent()
+        local parent_tag_name_node = parent_node:named_child():named_child()
+        local parent_tag_name = self:extract_node_text(parent_tag_name_node)
+
+        if parent_tag_name == "ul" then result = "- " .. result .. "\n" end
+        if parent_tag_name == "ol" then
+          local siblings = parent_node:named_children()
+          for i = 2, #siblings - 1 do
+            if node:equal(siblings[i]) then result = i - 1 .. " - " .. result .. "\n" end
+          end
+        end
+      elseif tag_name == "table" or tag_name == "tbody" or tag_name == "thead" then
+        local table_children = node:named_children()
+        for i = 2, #table_children - 1 do
+          local child_node = table_children[i]
+          result = self:eval_row(child_node) .. "|"
+        end
+
+        result = "\n" .. node_text .. "\n"
+      elseif tag_name == "abbr" then
+        result = string.format("%s(%s)", result, attributes.title)
+      elseif tag_name == "iframe" then
+        result = string.format("[%s](%s)", attributes.title, attributes.src)
       else
         local map = tag_mappings[tag_name]
         if map then
@@ -144,7 +186,28 @@ M.html_to_md = function(html)
     return result
   end
 
+  ---@param node TSNode
+  function transpiler:eval_row(node)
+    -- TODO
+    local result = ""
+
+    return result
+  end
+
   return transpiler:transpile()
 end
+
+-- M.html_to_md([[
+-- <table>
+--   <tr>
+--     <td>col1</td>
+--     <td>col2</td>
+--   </tr>
+--   <tr>2</tr>
+--   <tr>3</tr>
+--   <tr>4</tr>
+--   <tr>5</tr>
+-- </table>
+-- ]])
 
 return M

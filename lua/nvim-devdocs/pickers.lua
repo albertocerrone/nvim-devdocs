@@ -39,7 +39,8 @@ local metadata_priewer = previewers.new_buffer_previewer({
   title = "Metadata",
   define_preview = function(self, entry)
     local bufnr = self.state.bufnr
-    local lines = transpiler.to_yaml(entry.value)
+    local transpiled = transpiler.to_yaml(entry.value)
+    local lines = vim.split(transpiled, "\n")
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
     vim.bo[bufnr].ft = "yaml"
   end,
