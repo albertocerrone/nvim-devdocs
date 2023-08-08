@@ -7,6 +7,7 @@ local plugin_config = require("nvim-devdocs.config").get()
 
 local devdocs_cdn_url = "https://documents.devdocs.io"
 local docs_dir = path:new(plugin_config.dir_path, "docs")
+local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
 M.install = function(entry)
   local alias = entry.slug:gsub("~", "-")
@@ -24,6 +25,29 @@ M.install = function(entry)
       file_path:write(res, "w", 438)
       utils.log("Documentation for " .. alias .. " has been installed")
     end)
+  end
+end
+
+M.install_args = function(args)
+  local content = registery_path:read()
+  local parsed = vim.fn.json_decode(content)
+
+  for _, arg in ipairs(args) do
+    local slug = arg:gsub("-", "~")
+    local data = {}
+
+    for _, entry in ipairs(parsed) do
+      if entry.slug == slug then
+        data = entry
+        break
+      end
+    end
+
+    if vim.tbl_isempty(data) then
+      utils.log_err("No documentation available for " .. arg)
+    else
+      M.install(data)
+    end
   end
 end
 
