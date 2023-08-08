@@ -14,7 +14,7 @@ M.setup = function(opts)
   local cmd = vim.api.nvim_create_user_command
 
   cmd("DevdocsFetch", M.get_available_docs, {})
-  cmd("DevdocsInstall", M.install_doc, { nargs = "*", complete = completion.get_all })
+  cmd("DevdocsInstall", M.install_doc, { nargs = "*", complete = completion.get_non_installed })
   cmd("DevdocsUninstall", M.uninstall_doc, { nargs = "*", complete = completion.get_installed })
   cmd("DevdocsOpen", M.open_doc, { nargs = "?", complete = completion.get_installed })
 end

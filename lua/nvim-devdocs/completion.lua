@@ -5,19 +5,22 @@ local path = require("plenary.path")
 local list = require("nvim-devdocs.list")
 local plugin_config = require("nvim-devdocs.config").get()
 
-M.get_all = function(arg_lead, _, _)
+M.get_non_installed = function(arg_lead)
   local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
   if not registery_path:exists() then return {} end
 
   local content = registery_path:read()
   local parsed = vim.fn.json_decode(content)
+  local installed = list.get_installed()
   local args = {}
 
   for _, entry in pairs(parsed) do
     local arg = entry.slug:gsub("~", "-")
     local starts_with = string.find(arg, arg_lead, 1, true) == 1
-    if starts_with then table.insert(args, arg) end
+    if starts_with and not vim.tbl_contains(installed, arg) then
+      table.insert(args, arg)
+    end
   end
 
   return args
