@@ -17,6 +17,8 @@ local tag_mappings = {
   h4 = { left = "#### ", right = "\n\n" },
   h5 = { left = "##### ", right = "\n\n" },
   h6 = { left = "###### ", right = "\n\n" },
+  span = {},
+  header = {},
   div = { right = "\n" },
   section = { right = "\n" },
   p = { right = "\n\n" },
@@ -26,15 +28,12 @@ local tag_mappings = {
   dt = { right = "\n" },
   figure = { right = "\n" },
   dd = { left = ": " },
-  span = {},
-  header = {},
-  thead = {},
-  tbody = {},
-  pre = { left = "```\n", right = "```" },
+  pre = { left = "```\n", right = "```\n" },
   code = { left = "`", right = "`" },
   samp = { left = "`", right = "`" },
   var = { left = "`", right = "`" },
   kbd = { left = "`", right = "`" },
+  b = { left = "`", right = "`" },
   strong = { left = "**", right = "**" },
   em = { left = " _", right = "_ " },
   small = { left = " _", right = "_ " },
@@ -43,6 +42,15 @@ local tag_mappings = {
 
   br = { right = "\n" },
   hr = { right = "---" },
+}
+
+-- exceptions, table -> child
+local skipable_tag = {
+  "thead",
+  "tbody",
+  "tr",
+  "td",
+  "th",
 }
 
 M.to_yaml = function(entry)
@@ -90,6 +98,15 @@ M.html_to_md = function(html)
     end
 
     return table.concat(extracted_lines, "\n")
+  end
+
+  ---@param node TSNode
+  ---@return string
+  function transpiler:get_node_tag_name(node)
+    local tag_node = node:named_child():named_child()
+    local tag_name = self:get_node_text(tag_node)
+
+    return tag_name
   end
 
   function transpiler:transpile()
@@ -146,8 +163,7 @@ M.html_to_md = function(html)
         end
       end
 
-      local skipable = { "tr", "td", "th" }
-      if vim.tbl_contains(skipable, tag_name) then return "" end
+      if vim.tbl_contains(skipable_tag, tag_name) then return "" end
 
       if tag_name == "a" then
         result = string.format("[%s](%s)", result, attributes.href)
@@ -160,11 +176,10 @@ M.html_to_md = function(html)
       elseif tag_name == "abbr" then
         result = string.format("%s(%s)", result, attributes.title)
       elseif tag_name == "iframe" then
-        result = string.format("[%s](%s)", attributes.title, attributes.src)
+        result = string.format("[%s](%s)\n", attributes.title, attributes.src)
       elseif tag_name == "li" then
         local parent_node = node:parent()
-        local parent_tag_name_node = parent_node:named_child():named_child()
-        local parent_tag_name = self:get_node_text(parent_tag_name_node)
+        local parent_tag_name = self:get_node_tag_name(parent_node)
 
         if parent_tag_name == "ul" then result = "- " .. result .. "\n" end
         if parent_tag_name == "ol" then
@@ -192,22 +207,57 @@ M.html_to_md = function(html)
 
   ---@param node TSNode
   function transpiler:eval_table(node)
-    local children = node:named_children()
     local result = ""
-    local max_col_len = {}
+    local children = node:named_children()
+    ---@type TSNode[]
+    local tr_nodes = {}
 
+    -- assumes existing thead, tbody
     for i = 2, #children - 1 do
-      local child_node = children[i]
-      local child_tag_node = child_node:named_child():named_child()
-      local child_tag_name = self:get_node_text(child_tag_node)
+      local t_children = children[i]:named_children()
+      local t_tr = vim.tbl_filter(
+        function(child_node)
+          return child_node:type() ~= "start_tag" and child_node:type() ~= "end_tag"
+        end,
+        t_children
+      )
 
-      if child_tag_name == "thead" or child_tag_name == "tbody" then
-        result = result .. self:eval_table(child_node)
+      vim.list_extend(tr_nodes, t_tr)
+    end
+
+    local max_col_len = {}
+    local result_map = {}
+
+    for i, tr in ipairs(tr_nodes) do
+      local tr_children = tr:named_children()
+      result_map[i] = {}
+
+      for j = 2, #tr_children - 1 do
+        local inner_result = ""
+        local tcol_children = tr_children[j]:named_children()
+
+        for k = 2, #tcol_children - 1 do
+          inner_result = self:eval(tcol_children[k])
+        end
+
+        if max_col_len[j - 1] == nil then max_col_len[j - 1] = 0 end
+        if max_col_len[j - 1] < #inner_result then max_col_len[j - 1] = #inner_result end
+        result_map[i][j - 1] = inner_result
       end
+    end
 
-      if child_tag_name == "tr" then
-        local col_nodes = child_node:named_children()
-        -- TODO
+    for i, tr in ipairs(tr_nodes) do
+      for j, value in ipairs(result_map[i]) do
+        local col_len = max_col_len[j]
+        result = result .. "| " .. value .. string.rep(" ", col_len - #value) .. " "
+      end
+      result = result .. "|\n"
+      if i == 1 then
+        for j = 1, #result_map[i] do
+          local col_len = max_col_len[j]
+          result = result .. "| " .. string.rep("-", col_len) .. " "
+        end
+        result = result .. "|\n"
       end
     end
 
@@ -216,33 +266,5 @@ M.html_to_md = function(html)
 
   return transpiler:transpile()
 end
-
--- local md = M.html_to_md([[
--- <table>
---   <thead>
---     <tr>
---       <th>Header 1</th>
---       <th>Header 2</th>
---     </tr>
---   </thead>
---   <tbody>
---     <tr>
---       <td>Row 1, Cell 1</td>
---       <td>Row 1, Cell 2</td>
---     </tr>
---     <tr>
---       <td>Row 2, Cell 1</td>
---       <td>Row 2, Cell 2</td>
---     </tr>
---   </tbody>
--- </table>
--- ]])
---
--- print(md)
---
--- | Header 1     | Header 2     |
--- | ------------ | ------------ |
--- | Row 1, Cell 1| Row 1, Cell 2|
--- | Row 2, Cell 1| Row 2, Cell 2|
 
 return M
