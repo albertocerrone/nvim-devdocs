@@ -50,22 +50,20 @@ M.open_doc = function(args)
     -- TODO
   else
     local arg = args.fargs[1]
-    local file_path = path:new(plugin_config.dir_path, "docs", arg .. ".json")
+    local entries = operations.get_entries(arg)
 
-    if not file_path:exists() then
-      utils.log_err(arg .. " documentation is not installed")
-      return
-    end
+    pickers.open_doc_entry_picker(entries, false)
+  end
+end
 
-    local content = file_path:read()
-    local decoded = vim.fn.json_decode(content)
-    local entries = {}
+M.open_doc_float = function(args)
+  if vim.tbl_isempty(args.fargs) then
+    -- TODO
+  else
+    local arg = args.fargs[1]
+    local entries = operations.get_entries(arg)
 
-    for key, value in pairs(decoded) do
-      table.insert(entries, { key = key, value = value })
-    end
-
-    pickers.open_doc_entry_picker(entries)
+    pickers.open_doc_entry_picker(entries, true)
   end
 end
 

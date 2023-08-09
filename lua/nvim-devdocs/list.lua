@@ -8,7 +8,7 @@ local utils = require("nvim-devdocs.utils")
 
 local docs_dir = path:new(plugin_config.dir_path, "docs")
 
-M.get_installed = function()
+M.get_installed_alias = function()
   if not docs_dir:exists() then return {} end
 
   local files = scandir.scan_dir(path.__tostring(docs_dir), { all_dirs = false })
@@ -32,7 +32,7 @@ M.get_installed_entry = function()
 
   local content = registery_path:read()
   local parsed = vim.fn.json_decode(content)
-  local installed = M.get_installed()
+  local installed = M.get_installed_alias()
 
   local resuts = vim.tbl_filter(function(entry)
     for _, alias in pairs(installed) do

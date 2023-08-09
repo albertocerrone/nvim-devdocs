@@ -76,7 +76,7 @@ M.uninstallation_picker = function()
   picker:find()
 end
 
-M.open_doc_entry_picker = function(entries)
+M.open_doc_entry_picker = function(entries, float)
   local picker = pickers.new(telescope_opts, {
     prompt_title = "Select an entry",
     finder = finders.new_table({
@@ -107,9 +107,30 @@ M.open_doc_entry_picker = function(entries)
         local markdown = transpiler.html_to_md(selection.value.value)
         local lines = vim.split(markdown, "\n")
         local buf = vim.api.nvim_create_buf(true, true)
-        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-        vim.api.nvim_set_current_buf(buf)
+
         vim.bo[buf].ft = "markdown"
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+        if not float then
+          vim.api.nvim_set_current_buf(buf)
+        else
+          local gheight = vim.api.nvim_list_uis()[1].height
+          local gwidth = vim.api.nvim_list_uis()[1].width
+          local width = 100
+          local height = 25
+
+          local win = vim.api.nvim_open_win(buf, true, {
+            relative = "editor",
+            row = (gheight - height) * 0.5,
+            col = (gwidth - width) * 0.5,
+            width = width,
+            height = height,
+            border = "rounded",
+          })
+
+          vim.wo[win].nu = false
+          vim.wo[win].relativenumber = false
+        end
       end)
       return true
     end,

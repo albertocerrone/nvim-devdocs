@@ -62,4 +62,23 @@ M.uninstall = function(alias)
   end
 end
 
+M.get_entries = function(arg)
+  local file_path = path:new(plugin_config.dir_path, "docs", arg .. ".json")
+
+  if not file_path:exists() then
+    utils.log_err(arg .. " documentation is not installed")
+    return
+  end
+
+  local entries = {}
+  local content = file_path:read()
+  local decoded = vim.fn.json_decode(content)
+
+  for key, value in pairs(decoded) do
+    table.insert(entries, { key = key, value = value })
+  end
+
+  return entries
+end
+
 return M

@@ -12,22 +12,20 @@ M.get_non_installed = function(arg_lead)
 
   local content = registery_path:read()
   local parsed = vim.fn.json_decode(content)
-  local installed = list.get_installed()
+  local installed = list.get_installed_alias()
   local args = {}
 
   for _, entry in pairs(parsed) do
     local arg = entry.slug:gsub("~", "-")
     local starts_with = string.find(arg, arg_lead, 1, true) == 1
-    if starts_with and not vim.tbl_contains(installed, arg) then
-      table.insert(args, arg)
-    end
+    if starts_with and not vim.tbl_contains(installed, arg) then table.insert(args, arg) end
   end
 
   return args
 end
 
 M.get_installed = function(arg_lead)
-  local installed = list.get_installed()
+  local installed = list.get_installed_alias()
   local args = vim.tbl_filter(function(entry)
     local starts_with = string.find(entry, arg_lead, 1, true) == 1
     if starts_with then return true end
