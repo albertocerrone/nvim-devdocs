@@ -22,7 +22,7 @@ local tag_mappings = {
   h6 = { left = "###### ", right = "\n\n" },
   span = {},
   header = {},
-  div = { right = "\n" },
+  div = {},
   section = { right = "\n" },
   p = { right = "\n\n" },
   ul = { right = "\n" },
@@ -31,7 +31,7 @@ local tag_mappings = {
   dt = { right = "\n" },
   figure = { right = "\n" },
   dd = { left = ": " },
-  pre = { left = "```\n", right = "```\n" },
+  pre = { left = "```\n", right = "\n```\n" },
   code = { left = "`", right = "`" },
   samp = { left = "`", right = "`" },
   var = { left = "`", right = "`" },
@@ -115,7 +115,6 @@ M.html_to_md = function(html)
   end
 
   ---@param node TSNode
-  ---@return string
   function transpiler:get_node_tag_name(node)
     local tag_node = node:named_child():named_child()
     local tag_name = self:get_node_text(tag_node)
@@ -151,6 +150,17 @@ M.html_to_md = function(html)
   end
 
   ---@param node TSNode
+  function transpiler:filter_tag_children(node)
+    local children = node:named_children()
+    local filtered = vim.tbl_filter(function(child)
+      local type = child:type()
+      return type ~= "start_tag" and type ~= "end_tag"
+    end, children)
+
+    return filtered
+  end
+
+  ---@param node TSNode
   function transpiler:eval(node)
     local result = ""
     local node_type = node:type()
@@ -159,15 +169,15 @@ M.html_to_md = function(html)
     if node_type == "text" or node_type == "entity" then
       result = result .. normalize_html(node_text)
     elseif node_type == "element" then
-      local children = node:named_children()
-      local tag_node = children[1]
+      local tag_node = node:named_child()
       local tag_type = tag_node:type()
       local tag_name = self:get_node_text(tag_node:named_child())
       local attributes = self:get_node_attributes(node)
 
       if tag_type == "start_tag" then
-        for i = 2, #children - 1 do
-          result = result .. self:eval(children[i])
+        local children = self:filter_tag_children(node)
+        for _, child in ipairs(children) do
+          result = result .. self:eval(child)
         end
       end
 
@@ -183,17 +193,19 @@ M.html_to_md = function(html)
         result = string.format("%s(%s)", result, attributes.title)
       elseif tag_name == "iframe" then
         result = string.format("[%s](%s)\n", attributes.title, attributes.src)
+      elseif tag_name == "details" then
+        result = "..."
       elseif tag_name == "table" then
-        result = self:eval_table(node)
+        result = self:eval_table(node) .. "\n"
       elseif tag_name == "li" then
         local parent_node = node:parent()
         local parent_tag_name = self:get_node_tag_name(parent_node)
 
         if parent_tag_name == "ul" then result = "- " .. result .. "\n" end
         if parent_tag_name == "ol" then
-          local siblings = parent_node:named_children()
-          for i = 2, #siblings - 1 do
-            if node:equal(siblings[i]) then result = i - 1 .. ". " .. result .. "\n" end
+          local siblings = self:filter_tag_children(parent_node)
+          for i, sibling in ipairs(siblings) do
+            if node:equal(sibling) then result = i - 1 .. ". " .. result .. "\n" end
           end
         end
       else
@@ -216,73 +228,78 @@ M.html_to_md = function(html)
   ---@param node TSNode
   function transpiler:eval_table(node)
     local result = ""
-    local children = node:named_children()
+    local children = self:filter_tag_children(node)
     ---@type TSNode[]
     local tr_nodes = {}
 
-    -- assumes existing thead, tbody
-    for i = 2, #children - 1 do
-      local t_children = children[i]:named_children()
-      local t_tr = vim.tbl_filter(
-        function(child_node)
-          return child_node:type() ~= "start_tag" and child_node:type() ~= "end_tag"
-        end,
-        t_children
-      )
-
-      vim.list_extend(tr_nodes, t_tr)
+    -- extracts tr from thead, tbody
+    for _, child in ipairs(children) do
+      vim.list_extend(tr_nodes, self:filter_tag_children(child))
     end
 
-    local max_col_len = {}
+    local max_col_len_map = {}
     local result_map = {}
     local colspan_map = {}
 
     for i, tr in ipairs(tr_nodes) do
-      local tr_children = tr:named_children()
+      local tr_children = self:filter_tag_children(tr)
       result_map[i] = {}
       colspan_map[i] = {}
 
-      for j = 2, #tr_children - 1 do
+      for j, tcol_node in ipairs(tr_children) do
         local inner_result = ""
-        local tcol_node = tr_children[j]
-        local tcol_children = tcol_node:named_children()
+        local tcol_children = self:filter_tag_children(tcol_node)
         local attributes = self:get_node_attributes(tcol_node)
 
-        for k = 2, #tcol_children - 1 do
-          inner_result = self:eval(tcol_children[k])
+        for _, tcol_child in ipairs(tcol_children) do
+          inner_result = self:eval(tcol_child)
         end
 
-        result_map[i][j - 1] = inner_result
-        colspan_map[i][j - 1] = attributes.colspan and attributes.colspan or 1
+        result_map[i][j] = inner_result
+        colspan_map[i][j] = attributes.colspan and attributes.colspan or 1
 
-        if max_col_len[j - 1] == nil then max_col_len[j - 1] = 0 end
-        if max_col_len[j - 1] < #inner_result then max_col_len[j - 1] = #inner_result end
+        if max_col_len_map[j] == nil then max_col_len_map[j] = 0 end
+        if max_col_len_map[j] < #inner_result then max_col_len_map[j] = #inner_result end
       end
     end
 
+    -- draws columns evenly
     for i = 1, #tr_nodes do
+      local current_col = 1
       for j, value in ipairs(result_map[i]) do
-        local col_len = max_col_len[j]
+        local col_len = max_col_len_map[current_col]
         local colspan = tonumber(colspan_map[i][j])
         result = result .. "| " .. value .. string.rep(" ", col_len - #value + 1)
+        current_col = current_col + 1
 
-        for k = 2, colspan do
-          local spacing = max_col_len[j + k]
-          if spacing then result = result .. string.rep(" ", spacing + 3) end
+        if colspan > 1 then
+          local len = current_col + colspan - 1
+          while current_col < len do
+            local spacing = max_col_len_map[current_col]
+            if spacing then result = result .. string.rep(" ", spacing + 3) end
+            current_col = current_col + 1
+          end
         end
       end
 
       result = result .. "|\n"
 
+      -- generates row separator
       if i == 1 then
+        current_col = 1
         for j = 1, #result_map[i] do
-          local col_len = max_col_len[j]
+          local col_len = max_col_len_map[current_col]
           local colspan = tonumber(colspan_map[i][j])
           local line = string.rep("-", col_len)
+          current_col = current_col + 1
 
-          for k = 2, colspan do
-            local spacing = max_col_len[j + k]
-            if spacing then line = line .. string.rep("-", spacing + 3) end
+          if colspan > 1 then
+            local len = current_col + colspan - 1
+            while current_col < len do
+              local spacing = max_col_len_map[current_col]
+              if spacing then line = line .. string.rep("-", spacing + 3) end
+              current_col = current_col + 1
+            end
           end
           result = result .. "| " .. line .. " "
         end
