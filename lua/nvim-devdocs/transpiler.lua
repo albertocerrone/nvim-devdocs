@@ -1,11 +1,14 @@
 M = {}
 
 local normalize_html = function(str)
-  str = str:gsub("&copy;", "©")
-  str = str:gsub("&ndash;", "–")
   str = str:gsub("&lt;", "<")
   str = str:gsub("&gt;", ">")
   str = str:gsub("&amp;", "&")
+  str = str:gsub("&quot;", '"')
+  str = str:gsub("&apos;", "'")
+  str = str:gsub("&nbsp;", " ")
+  str = str:gsub("&copy;", "©")
+  str = str:gsub("&ndash;", "–")
 
   return str
 end
@@ -246,7 +249,7 @@ M.html_to_md = function(html)
       end
     end
 
-    for i, tr in ipairs(tr_nodes) do
+    for i = 1, #tr_nodes do
       for j, value in ipairs(result_map[i]) do
         local col_len = max_col_len[j]
         result = result .. "| " .. value .. string.rep(" ", col_len - #value) .. " "
