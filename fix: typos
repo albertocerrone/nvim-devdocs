@@ -1,6 +1,6 @@
 # nvim-devdocs
 
-nvim-devdocs is a plugin which brings [DevDocs](https://devdocs.io) documentations into neovim. Install, search and preview documentations directly in neovim in markdown format with telescope integration.
+nvim-devdocs is a plugin which brings [DevDocs](https://devdocs.io) documentations into neovim. Install, search and preview documentations directly inside neovim in markdown format with telescope integration.
 
 ## Installation
 
@@ -24,7 +24,7 @@ Inside your treesitter configuration:
 
 ```lua
 {
-  ensure_installed = { "html" }
+  ensure_installed = { "html" },
 }
 ```
 
@@ -36,8 +36,7 @@ Here is the default configuration:
 {
   dir_path = vim.fn.stdpath("data") .. "/devdocs", -- installation directory
   telescope = {}, -- passed to the telescope picker
-  -- passed to nvim_open_win(), see :h api-floatwin
-  float_win = {
+  float_win = { -- passed to nvim_open_win(), see :h api-floatwin
     relative = "editor",
     height = 25,
     width = 100,
@@ -50,7 +49,7 @@ Here is the default configuration:
 
 ## Commands
 
-Avalaible commands:
+Available commands:
 
 - `DevdocsFetch`: Fetch DevDocs metadata.
 - `DevdocsInstall`: Install documentation.
@@ -66,5 +65,5 @@ Avalaible commands:
 
 ## Credits
 
-- [The DevDocs propject](https://github.com/freeCodeCamp/devdocs) for the documentations.
+- [The DevDocs project](https://github.com/freeCodeCamp/devdocs) for the documentations.
 - [devdocs.el](https://github.com/astoff/devdocs.el) for inspiration.
