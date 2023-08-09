@@ -42,6 +42,17 @@ local tag_mappings = {
   small = { left = " _", right = "_ " },
   sup = { left = "^", right = "^" },
   blockquote = { left = "> " },
+  summary = { left = "<", right = ">" },
+  math = { left = "```math\n", right = "\n```" },
+  annotation = { left = "[", right = "]" },
+  semantics = {},
+  mspace = { left = " " },
+  msup = { right = "^" },
+  mfrac = { right = "/" },
+  mrow = {},
+  mo = {},
+  mn = {},
+  mi = {},
 
   br = { right = "\n" },
   hr = { right = "---" },
@@ -49,11 +60,11 @@ local tag_mappings = {
 
 -- exceptions, table -> child
 local skipable_tag = {
-  "thead",
-  "tbody",
   "tr",
   "td",
   "th",
+  "thead",
+  "tbody",
 }
 
 M.to_yaml = function(entry)
@@ -112,21 +123,31 @@ M.html_to_md = function(html)
     return tag_name
   end
 
-  function transpiler:transpile()
-    self.parser:parse()
-    self.parser:for_each_tree(function(tree)
-      local root = tree:root()
+  ---@param node TSNode
+  function transpiler:get_node_attributes(node)
+    local attributes = {}
+    local tag_node = node:named_child()
 
-      if root then
-        local children = root:named_children()
+    if tag_node == nil then return {} end
 
-        for _, node in pairs(children) do
-          self.result = self.result .. self:eval(node)
-        end
+    local tag_children = tag_node:named_children()
+
+    for i = 2, #tag_children do
+      local attribute_node = tag_children[i]
+      local attribute_name_node = attribute_node:named_child()
+      local attribute_name = self:get_node_text(attribute_name_node)
+      local value = ""
+
+      if attribute_name_node:next_named_sibling() then
+        local quotetd_value_node = attribute_name_node:next_named_sibling()
+        local value_node = quotetd_value_node:named_child()
+        if value_node then value = self:get_node_text(value_node) end
       end
-    end)
 
-    return self.result
+      attributes[attribute_name] = value
+    end
+
+    return attributes
   end
 
   ---@param node TSNode
@@ -140,25 +161,9 @@ M.html_to_md = function(html)
     elseif node_type == "element" then
       local children = node:named_children()
       local tag_node = children[1]
-      local tag_children = tag_node:named_children()
       local tag_type = tag_node:type()
       local tag_name = self:get_node_text(tag_node:named_child())
-      local attributes = {}
-
-      for i = 2, #tag_children do
-        local attribute_node = tag_children[i]
-        local attribute_name_node = attribute_node:named_child()
-        local attribute_name = self:get_node_text(attribute_name_node)
-        local value = ""
-
-        if attribute_name_node:next_named_sibling() then
-          local quotetd_value_node = attribute_name_node:next_named_sibling()
-          local value_node = quotetd_value_node:named_child()
-          if value_node then value = self:get_node_text(value_node) end
-        end
-
-        attributes[attribute_name] = value
-      end
+      local attributes = self:get_node_attributes(node)
 
       if tag_type == "start_tag" then
         for i = 2, #children - 1 do
@@ -174,12 +179,12 @@ M.html_to_md = function(html)
         result = string.format("![%s](%s)", attributes.alt, attributes.src)
       elseif tag_name == "pre" and attributes["data-language"] then
         result = "```" .. attributes["data-language"] .. "\n" .. result .. "\n```\n"
-      elseif tag_name == "table" then
-        result = self:eval_table(node)
       elseif tag_name == "abbr" then
         result = string.format("%s(%s)", result, attributes.title)
       elseif tag_name == "iframe" then
         result = string.format("[%s](%s)\n", attributes.title, attributes.src)
+      elseif tag_name == "table" then
+        result = self:eval_table(node)
       elseif tag_name == "li" then
         local parent_node = node:parent()
         local parent_tag_name = self:get_node_tag_name(parent_node)
@@ -230,41 +235,78 @@ M.html_to_md = function(html)
 
     local max_col_len = {}
     local result_map = {}
+    local colspan_map = {}
 
     for i, tr in ipairs(tr_nodes) do
       local tr_children = tr:named_children()
       result_map[i] = {}
+      colspan_map[i] = {}
 
       for j = 2, #tr_children - 1 do
         local inner_result = ""
-        local tcol_children = tr_children[j]:named_children()
+        local tcol_node = tr_children[j]
+        local tcol_children = tcol_node:named_children()
+        local attributes = self:get_node_attributes(tcol_node)
 
         for k = 2, #tcol_children - 1 do
           inner_result = self:eval(tcol_children[k])
         end
 
+        result_map[i][j - 1] = inner_result
+        colspan_map[i][j - 1] = attributes.colspan and attributes.colspan or 1
+
         if max_col_len[j - 1] == nil then max_col_len[j - 1] = 0 end
         if max_col_len[j - 1] < #inner_result then max_col_len[j - 1] = #inner_result end
-        result_map[i][j - 1] = inner_result
       end
     end
 
     for i = 1, #tr_nodes do
       for j, value in ipairs(result_map[i]) do
         local col_len = max_col_len[j]
-        result = result .. "| " .. value .. string.rep(" ", col_len - #value) .. " "
+        local colspan = tonumber(colspan_map[i][j])
+        result = result .. "| " .. value .. string.rep(" ", col_len - #value + 1)
+
+        for k = 2, colspan do
+          local spacing = max_col_len[j + k]
+          if spacing then result = result .. string.rep(" ", spacing + 3) end
+        end
       end
+
       result = result .. "|\n"
+
       if i == 1 then
         for j = 1, #result_map[i] do
           local col_len = max_col_len[j]
-          result = result .. "| " .. string.rep("-", col_len) .. " "
+          local colspan = tonumber(colspan_map[i][j])
+          local line = string.rep("-", col_len)
+
+          for k = 2, colspan do
+            local spacing = max_col_len[j + k]
+            if spacing then line = line .. string.rep("-", spacing + 3) end
+          end
+          result = result .. "| " .. line .. " "
         end
+
         result = result .. "|\n"
       end
     end
 
     return result
+  end
+
+  function transpiler:transpile()
+    self.parser:parse()
+    self.parser:for_each_tree(function(tree)
+      local root = tree:root()
+      if root then
+        local children = root:named_children()
+        for _, node in ipairs(children) do
+          self.result = self.result .. self:eval(node)
+        end
+      end
+    end)
+
+    return self.result
   end
 
   return transpiler:transpile()
