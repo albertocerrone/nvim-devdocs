@@ -3,6 +3,13 @@ local M = {}
 local config = {
   dir_path = vim.fn.stdpath("data") .. "/devdocs",
   telescope = {},
+  float_win = {
+    relative = "editor",
+    height = 25,
+    width = 100,
+    border = "rounded",
+  },
+  wrap = false,
   ensure_installed = {},
 }
 

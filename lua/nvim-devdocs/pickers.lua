@@ -106,7 +106,7 @@ M.open_doc_entry_picker = function(entries, float)
         local selection = action_state.get_selected_entry()
         local markdown = transpiler.html_to_md(selection.value.value)
         local lines = vim.split(markdown, "\n")
-        local buf = vim.api.nvim_create_buf(true, true)
+        local buf = vim.api.nvim_create_buf(not float, true)
 
         vim.bo[buf].ft = "markdown"
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -114,20 +114,17 @@ M.open_doc_entry_picker = function(entries, float)
         if not float then
           vim.api.nvim_set_current_buf(buf)
         else
-          local gheight = vim.api.nvim_list_uis()[1].height
-          local gwidth = vim.api.nvim_list_uis()[1].width
-          local width = 100
-          local height = 25
+          local ui = vim.api.nvim_list_uis()[1]
+          local row = (ui.height - plugin_config.float_win.height) * 0.5
+          local col = (ui.width - plugin_config.float_win.width) * 0.5
+          local float_opts = plugin_config.float_win
 
-          local win = vim.api.nvim_open_win(buf, true, {
-            relative = "editor",
-            row = (gheight - height) * 0.5,
-            col = (gwidth - width) * 0.5,
-            width = width,
-            height = height,
-            border = "rounded",
-          })
+          if not plugin_config.row then float_opts.row = row end
+          if not plugin_config.col then float_opts.col = col end
 
+          local win = vim.api.nvim_open_win(buf, true, float_opts)
+
+          vim.wo[win].wrap = plugin_config.wrap
           vim.wo[win].nu = false
           vim.wo[win].relativenumber = false
         end
