@@ -11,13 +11,11 @@ local devdocs_site_url = "https://devdocs.io"
 
 M.get_available_docs = function()
   utils.log("Fetching Devdocs registery...")
-
   utils.fetch_async(devdocs_site_url .. "/docs.json", function(res)
     local dir_path = path:new(plugin_config.dir_path)
+    local file_path = path:new(plugin_config.dir_path, "registery.json")
 
     if not dir_path:exists() then dir_path:mkdir() end
-
-    local file_path = path:new(plugin_config.dir_path, "registery.json")
 
     file_path:write(res, "w", 438)
     utils.log("Devdocs registery has been successfully written to the disk")
@@ -27,14 +25,13 @@ end
 M.install_doc = function(args)
   local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
-  if not registery_path:exists() then
+  if registery_path:exists() then
+    if vim.tbl_isempty(args.fargs) then pickers.installation_picker() end
+
+    operations.install_args(args.fargs, true)
+  else
     utils.log_err("Devdocs registery not found, please run :DevdocsFetch")
-    return
   end
-
-  if vim.tbl_isempty(args.fargs) then pickers.installation_picker() end
-
-  operations.install_args(args.fargs, true)
 end
 
 M.uninstall_doc = function(args)
@@ -52,9 +49,11 @@ M.open_doc = function(args)
     local arg = args.fargs[1]
     local entries = operations.get_entries(arg)
 
-    if not entries then return end
-
-    pickers.open_doc_entry_picker(entries, false)
+    if entries then
+      pickers.open_doc_entry_picker(entries, false)
+    else
+      utils.log_err(arg .. " documentation is not installed")
+    end
   end
 end
 
@@ -65,9 +64,11 @@ M.open_doc_float = function(args)
     local arg = args.fargs[1]
     local entries = operations.get_entries(arg)
 
-    if not entries then return end
-
-    pickers.open_doc_entry_picker(entries, true)
+    if entries then
+      pickers.open_doc_entry_picker(entries, true)
+    else
+      utils.log_err(arg .. " documentation is not installed")
+    end
   end
 end
 

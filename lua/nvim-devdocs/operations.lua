@@ -17,13 +17,11 @@ M.install = function(entry, verbose)
   if not docs_dir:exists() then docs_dir:mkdir() end
 
   if file_path:exists() then
-    if verbose then
-      utils.log("Documentation for " .. alias .. " is already installed")
-    end
+    if verbose then utils.log("Documentation for " .. alias .. " is already installed") end
   else
-    utils.log("Installing " .. alias .. " documentation...")
-
     local url = string.format("%s/%s/db.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
+
+    utils.log("Installing " .. alias .. " documentation...")
     utils.fetch_async(url, function(res)
       file_path:write(res, "w", 438)
       utils.log("Documentation for " .. alias .. " has been installed")
@@ -68,10 +66,7 @@ end
 M.get_entries = function(arg)
   local file_path = path:new(plugin_config.dir_path, "docs", arg .. ".json")
 
-  if not file_path:exists() then
-    utils.log_err(arg .. " documentation is not installed")
-    return
-  end
+  if not file_path:exists() then return end
 
   local entries = {}
   local content = file_path:read()
