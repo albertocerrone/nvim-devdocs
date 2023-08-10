@@ -88,7 +88,6 @@ M.open = function(entry, float)
   local buf = vim.api.nvim_create_buf(not float, true)
 
   vim.bo[buf].ft = "markdown"
-  vim.api.nvim_buf_set_name(buf, entry.key)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(buf, "modifiable", false)
 

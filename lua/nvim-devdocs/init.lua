@@ -52,6 +52,8 @@ M.open_doc = function(args)
     local arg = args.fargs[1]
     local entries = operations.get_entries(arg)
 
+    if not entries then return end
+
     pickers.open_doc_entry_picker(entries, false)
   end
 end
@@ -62,6 +64,8 @@ M.open_doc_float = function(args)
   else
     local arg = args.fargs[1]
     local entries = operations.get_entries(arg)
+
+    if not entries then return end
 
     pickers.open_doc_entry_picker(entries, true)
   end
