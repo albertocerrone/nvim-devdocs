@@ -8,7 +8,7 @@ local pickers = require("nvim-devdocs.pickers")
 local operations = require("nvim-devdocs.operations")
 local plugin_config = require("nvim-devdocs.config").get()
 
-M.fetch_registery = function() operations.fetch(true) end
+M.fetch_registery = function() operations.fetch() end
 
 M.install_doc = function(args)
   local registery_path = path:new(plugin_config.dir_path, "registery.json")

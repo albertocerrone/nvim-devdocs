@@ -13,8 +13,8 @@ local docs_dir = path:new(plugin_config.dir_path, "docs")
 local registery_path = path:new(plugin_config.dir_path, "registery.json")
 local index_path = path:new(plugin_config.dir_path, "index.json")
 
-M.fetch = function(verbose)
-  if verbose then notify.log("Fetching DevDocs registery...") end
+M.fetch = function()
+  notify.log("Fetching DevDocs registery...")
 
   curl.get(devdocs_site_url .. "/docs.json", {
     callback = function(response)
@@ -25,7 +25,7 @@ M.fetch = function(verbose)
 
       file_path:write(response.body, "w", 438)
 
-      if verbose then notify.log("DevDocs registery has been written to the disk") end
+      notify.log("DevDocs registery has been written to the disk")
     end,
     on_error = function(error)
       notify.log_err("nvim-devdocs: Error when fetching registery, exit code: " .. error.exit)
