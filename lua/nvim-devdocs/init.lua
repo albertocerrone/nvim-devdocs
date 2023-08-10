@@ -1,8 +1,9 @@
 local M = {}
 
 local path = require("plenary.path")
+local curl = require("plenary.curl")
 
-local utils = require("nvim-devdocs.utils")
+local notify = require("nvim-devdocs.notify")
 local pickers = require("nvim-devdocs.pickers")
 local operations = require("nvim-devdocs.operations")
 local plugin_config = require("nvim-devdocs.config").get()
@@ -10,16 +11,21 @@ local plugin_config = require("nvim-devdocs.config").get()
 local devdocs_site_url = "https://devdocs.io"
 
 M.get_available_docs = function()
-  utils.log("Fetching Devdocs registery...")
-  utils.fetch_async(devdocs_site_url .. "/docs.json", function(res)
-    local dir_path = path:new(plugin_config.dir_path)
-    local file_path = path:new(plugin_config.dir_path, "registery.json")
+  notify.log("Fetching Devdocs registery...")
+  curl.get(devdocs_site_url .. "/docs.json", {
+    callback = function(res)
+      local dir_path = path:new(plugin_config.dir_path)
+      local file_path = path:new(plugin_config.dir_path, "registery.json")
 
-    if not dir_path:exists() then dir_path:mkdir() end
+      if not dir_path:exists() then dir_path:mkdir() end
 
-    file_path:write(res, "w", 438)
-    utils.log("Devdocs registery has been successfully written to the disk")
-  end)
+      file_path:write(res.body, "w", 438)
+      notify.log("Devdocs registery has been successfully written to the disk")
+    end,
+    on_error = function(error)
+      notify.log_err("nvim-devdocs: Error when fetching registery, exit code: " .. error.exit)
+    end,
+  })
 end
 
 M.install_doc = function(args)
@@ -30,7 +36,7 @@ M.install_doc = function(args)
 
     operations.install_args(args.fargs, true)
   else
-    utils.log_err("Devdocs registery not found, please run :DevdocsFetch")
+    notify.log_err("Devdocs registery not found, please run :DevdocsFetch")
   end
 end
 
@@ -52,7 +58,7 @@ M.open_doc = function(args)
     if entries then
       pickers.open_doc_entry_picker(entries, false)
     else
-      utils.log_err(arg .. " documentation is not installed")
+      notify.log_err(arg .. " documentation is not installed")
     end
   end
 end
@@ -67,7 +73,7 @@ M.open_doc_float = function(args)
     if entries then
       pickers.open_doc_entry_picker(entries, true)
     else
-      utils.log_err(arg .. " documentation is not installed")
+      notify.log_err(arg .. " documentation is not installed")
     end
   end
 end

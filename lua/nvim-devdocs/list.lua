@@ -4,7 +4,7 @@ local path = require("plenary.path")
 local scandir = require("plenary.scandir")
 
 local plugin_config = require("nvim-devdocs.config").get()
-local utils = require("nvim-devdocs.utils")
+local notify = require("nvim-devdocs.notify")
 
 local docs_dir = path:new(plugin_config.dir_path, "docs")
 
@@ -26,7 +26,7 @@ M.get_installed_entry = function()
   local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
   if not registery_path:exists() then
-    utils.log_err("Devdocs registery not found, please run :DevdocsFetch")
+    notify.log_err("Devdocs registery not found, please run :DevdocsFetch")
     return
   end
 

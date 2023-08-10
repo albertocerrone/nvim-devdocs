@@ -1,8 +1,9 @@
 local M = {}
 
+local curl = require("plenary.curl")
 local path = require("plenary.path")
 
-local utils = require("nvim-devdocs.utils")
+local notify = require("nvim-devdocs.notify")
 local transpiler = require("nvim-devdocs.transpiler")
 local plugin_config = require("nvim-devdocs.config").get()
 
@@ -17,15 +18,22 @@ M.install = function(entry, verbose)
   if not docs_dir:exists() then docs_dir:mkdir() end
 
   if file_path:exists() then
-    if verbose then utils.log("Documentation for " .. alias .. " is already installed") end
+    if verbose then notify.log("Documentation for " .. alias .. " is already installed") end
   else
     local url = string.format("%s/%s/db.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
 
-    utils.log("Installing " .. alias .. " documentation...")
-    utils.fetch_async(url, function(res)
-      file_path:write(res, "w", 438)
-      utils.log("Documentation for " .. alias .. " has been installed")
-    end)
+    notify.log("Installing " .. alias .. " documentation...")
+    curl.get(url, {
+      callback = function(res)
+        file_path:write(res.body, "w", 438)
+        notify.log("Documentation for " .. alias .. " has been installed")
+      end,
+      on_error = function(error)
+        notify.log_err(
+          "nvim-devdocs[" .. alias .. "]: Error during download, exit code: " .. error.exit
+        )
+      end,
+    })
   end
 end
 
@@ -45,7 +53,7 @@ M.install_args = function(args, verbose)
     end
 
     if vim.tbl_isempty(data) then
-      utils.log_err("No documentation available for " .. arg)
+      notify.log_err("No documentation available for " .. arg)
     else
       M.install(data, verbose)
     end
@@ -56,10 +64,10 @@ M.uninstall = function(alias)
   local file_path = path:new(docs_dir, alias .. ".json")
 
   if not file_path:exists() then
-    utils.log(alias .. " documentation is already uninstalled")
+    notify.log(alias .. " documentation is already uninstalled")
   else
     file_path:rm()
-    utils.log(alias .. " documentation has been uninstalled")
+    notify.log(alias .. " documentation has been uninstalled")
   end
 end
 
