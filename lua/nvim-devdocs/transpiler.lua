@@ -31,7 +31,7 @@ local tag_mappings = {
   dt = { right = "\n" },
   figure = { right = "\n" },
   dd = { left = ": " },
-  pre = { left = "```\n", right = "\n```\n" },
+  pre = { left = "\n```\n", right = "\n```\n" },
   code = { left = "`", right = "`" },
   samp = { left = "`", right = "`" },
   var = { left = "`", right = "`" },
@@ -188,7 +188,7 @@ M.html_to_md = function(html)
       elseif tag_name == "img" then
         result = string.format("![%s](%s)", attributes.alt, attributes.src)
       elseif tag_name == "pre" and attributes["data-language"] then
-        result = "```" .. attributes["data-language"] .. "\n" .. result .. "\n```\n"
+        result = "\n```" .. attributes["data-language"] .. "\n" .. result .. "\n```\n"
       elseif tag_name == "abbr" then
         result = string.format("%s(%s)", result, attributes.title)
       elseif tag_name == "iframe" then
