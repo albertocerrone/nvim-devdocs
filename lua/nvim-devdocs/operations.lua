@@ -10,14 +10,16 @@ local devdocs_cdn_url = "https://documents.devdocs.io"
 local docs_dir = path:new(plugin_config.dir_path, "docs")
 local registery_path = path:new(plugin_config.dir_path, "registery.json")
 
-M.install = function(entry)
+M.install = function(entry, verbose)
   local alias = entry.slug:gsub("~", "-")
   local file_path = path:new(docs_dir, alias .. ".json")
 
   if not docs_dir:exists() then docs_dir:mkdir() end
 
   if file_path:exists() then
-    utils.log("Documentation for " .. alias .. " is already installed")
+    if verbose then
+      utils.log("Documentation for " .. alias .. " is already installed")
+    end
   else
     utils.log("Installing " .. alias .. " documentation...")
 
@@ -29,7 +31,7 @@ M.install = function(entry)
   end
 end
 
-M.install_args = function(args)
+M.install_args = function(args, verbose)
   local content = registery_path:read()
   local parsed = vim.fn.json_decode(content)
 
@@ -47,7 +49,7 @@ M.install_args = function(args)
     if vim.tbl_isempty(data) then
       utils.log_err("No documentation available for " .. arg)
     else
-      M.install(data)
+      M.install(data, verbose)
     end
   end
 end
