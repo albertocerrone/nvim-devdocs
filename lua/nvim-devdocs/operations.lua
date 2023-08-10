@@ -7,27 +7,70 @@ local notify = require("nvim-devdocs.notify")
 local transpiler = require("nvim-devdocs.transpiler")
 local plugin_config = require("nvim-devdocs.config").get()
 
+local devdocs_site_url = "https://devdocs.io"
 local devdocs_cdn_url = "https://documents.devdocs.io"
 local docs_dir = path:new(plugin_config.dir_path, "docs")
 local registery_path = path:new(plugin_config.dir_path, "registery.json")
+local index_path = path:new(plugin_config.dir_path, "index.json")
+
+M.fetch = function(verbose)
+  if verbose then notify.log("Fetching DevDocs registery...") end
+
+  curl.get(devdocs_site_url .. "/docs.json", {
+    callback = function(response)
+      local dir_path = path:new(plugin_config.dir_path)
+      local file_path = path:new(plugin_config.dir_path, "registery.json")
+
+      if not dir_path:exists() then dir_path:mkdir() end
+
+      file_path:write(response.body, "w", 438)
+
+      if verbose then notify.log("DevDocs registery has been written to the disk") end
+    end,
+    on_error = function(error)
+      notify.log_err("nvim-devdocs: Error when fetching registery, exit code: " .. error.exit)
+    end,
+  })
+end
 
 M.install = function(entry, verbose)
   local alias = entry.slug:gsub("~", "-")
-  local file_path = path:new(docs_dir, alias .. ".json")
+  local doc_path = path:new(docs_dir, alias .. ".json")
 
   if not docs_dir:exists() then docs_dir:mkdir() end
+  if not index_path:exists() then index_path:write("{}", "w", 438) end
 
-  if file_path:exists() then
+  if doc_path:exists() then
     if verbose then notify.log("Documentation for " .. alias .. " is already installed") end
   else
-    local url = string.format("%s/%s/db.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
+    local doc_url = string.format("%s/%s/db.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
 
     notify.log("Installing " .. alias .. " documentation...")
-    curl.get(url, {
+    curl.get(doc_url, {
       callback = function(response)
-        file_path:write(response.body, "w", 438)
-        notify.log("Documentation for " .. alias .. " has been installed")
+        doc_path:write(response.body, "w", 438)
+        notify.log(alias .. " documentation has been installed")
       end,
+      on_error = function(error)
+        notify.log_err(
+          "nvim-devdocs[" .. alias .. "]: Error during download, exit code: " .. error.exit
+        )
+      end,
+    })
+
+    local index_url = string.format("%s/%s/index.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
+
+    curl.get(index_url, {
+      callback = vim.schedule_wrap(function(response)
+        local index_content = index_path:read()
+        local index_parsed = vim.fn.json_decode(index_content)
+        local response_parsed = vim.fn.json_decode(response.body)
+
+        response_parsed.mtime = entry.mtime
+        index_parsed[alias] = response_parsed
+        index_path:write(vim.fn.json_encode(index_parsed), "w", 438)
+        notify.log(alias .. " documentation has been indexed")
+      end),
       on_error = function(error)
         notify.log_err(
           "nvim-devdocs[" .. alias .. "]: Error during download, exit code: " .. error.exit
@@ -71,18 +114,30 @@ M.uninstall = function(alias)
   end
 end
 
-M.get_entries = function(arg)
-  local file_path = path:new(plugin_config.dir_path, "docs", arg .. ".json")
+M.get_entries = function(alias)
+  local file_path = path:new(plugin_config.dir_path, "docs", alias .. ".json")
 
-  if not file_path:exists() then return end
+  if not index_path:exists() or not file_path:exists() then return end
 
   local entries = {}
-  local content = file_path:read()
-  local decoded = vim.fn.json_decode(content)
+  local index_content = index_path:read()
+  local index_parsed = vim.fn.json_decode(index_content)
+  local docs_content = file_path:read()
+  local docs_decoded = vim.fn.json_decode(docs_content)
 
-  for key, value in pairs(decoded) do
-    table.insert(entries, { key = key, value = value })
+  for _, entry in pairs(index_parsed[alias].entries) do
+    local doc = ""
+    local entry_path = vim.split(entry.path, "#")
+    local local_path = entry_path[2] and entry_path[2] or entry_path[1]
+
+    for doc_entry, value in pairs(docs_decoded) do
+      if string.lower(doc_entry) == string.lower(entry_path[1]) then doc = value end
+    end
+
+    table.insert(entries, { name = entry.name, path = local_path, value = doc })
   end
+
+  table.insert(entries, { name = "index", path = "index", value = docs_decoded["index"] })
 
   return entries
 end

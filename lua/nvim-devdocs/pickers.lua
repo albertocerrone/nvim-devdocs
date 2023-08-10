@@ -84,8 +84,8 @@ M.open_doc_entry_picker = function(entries, float)
       entry_maker = function(entry)
         return {
           value = entry,
-          display = entry.key,
-          ordinal = entry.key,
+          display = entry.name,
+          ordinal = entry.name,
         }
       end,
     }),
