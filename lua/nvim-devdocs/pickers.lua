@@ -109,6 +109,7 @@ M.open_doc_entry_picker = function(entries, float)
         local buf = vim.api.nvim_create_buf(not float, true)
 
         vim.bo[buf].ft = "markdown"
+        vim.api.nvim_buf_set_name(buf, selection.value.key)
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
         if not float then
