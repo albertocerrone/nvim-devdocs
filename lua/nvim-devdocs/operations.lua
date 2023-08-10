@@ -3,6 +3,7 @@ local M = {}
 local path = require("plenary.path")
 
 local utils = require("nvim-devdocs.utils")
+local transpiler = require("nvim-devdocs.transpiler")
 local plugin_config = require("nvim-devdocs.config").get()
 
 local devdocs_cdn_url = "https://documents.devdocs.io"
@@ -79,6 +80,35 @@ M.get_entries = function(arg)
   end
 
   return entries
+end
+
+M.open = function(entry, float)
+  local markdown = transpiler.html_to_md(entry.value)
+  local lines = vim.split(markdown, "\n")
+  local buf = vim.api.nvim_create_buf(not float, true)
+
+  vim.bo[buf].ft = "markdown"
+  vim.api.nvim_buf_set_name(buf, entry.key)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(buf, "modifiable", false)
+
+  if not float then
+    vim.api.nvim_set_current_buf(buf)
+  else
+    local ui = vim.api.nvim_list_uis()[1]
+    local row = (ui.height - plugin_config.float_win.height) * 0.5
+    local col = (ui.width - plugin_config.float_win.width) * 0.5
+    local float_opts = plugin_config.float_win
+
+    if not plugin_config.row then float_opts.row = row end
+    if not plugin_config.col then float_opts.col = col end
+
+    local win = vim.api.nvim_open_win(buf, true, float_opts)
+
+    vim.wo[win].wrap = plugin_config.wrap
+    vim.wo[win].nu = false
+    vim.wo[win].relativenumber = false
+  end
 end
 
 return M
