@@ -2,6 +2,7 @@ local M = {}
 
 local path = require("plenary.path")
 
+local list = require("nvim-devdocs.list")
 local notify = require("nvim-devdocs.notify")
 local pickers = require("nvim-devdocs.pickers")
 local operations = require("nvim-devdocs.operations")
@@ -59,8 +60,30 @@ M.open_doc_float = function(args)
   end
 end
 
-M.check_update = function()
-  -- TODO
+M.update = function(args)
+  local registery_path = path:new(plugin_config.dir_path, "registery.json")
+
+  if registery_path:exists() then
+    operations.install_args(args.fargs, true, true)
+  else
+    notify.log_err("DevDocs registery not found, please run :DevdocsFetch")
+  end
+end
+
+M.update_all = function()
+  local registery_path = path:new(plugin_config.dir_path, "registery.json")
+
+  if registery_path:exists() then
+    local updatable = list.get_updatable()
+
+    if vim.tbl_isempty(updatable) then
+      notify.log("All documentations are up to date")
+    else
+      operations.install_args(updatable, true, true)
+    end
+  else
+    notify.log_err("DevDocs registery not found, please run :DevdocsFetch")
+  end
 end
 
 return M

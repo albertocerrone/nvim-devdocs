@@ -35,4 +35,15 @@ M.get_installed = function(arg_lead)
   return args
 end
 
+M.get_updatable = function(arg_lead)
+  local updatable = list.get_updatable()
+  local args = vim.tbl_filter(function(entry)
+    local starts_with = string.find(entry, arg_lead, 1, true) == 1
+    if starts_with then return true end
+    return false
+  end, updatable)
+
+  return args
+end
+
 return M

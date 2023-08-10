@@ -33,23 +33,23 @@ M.fetch = function(verbose)
   })
 end
 
-M.install = function(entry, verbose)
+M.install = function(entry, verbose, is_update)
   local alias = entry.slug:gsub("~", "-")
   local doc_path = path:new(docs_dir, alias .. ".json")
 
   if not docs_dir:exists() then docs_dir:mkdir() end
   if not index_path:exists() then index_path:write("{}", "w", 438) end
 
-  if doc_path:exists() then
+  if not is_update and doc_path:exists() then
     if verbose then notify.log("Documentation for " .. alias .. " is already installed") end
   else
     local doc_url = string.format("%s/%s/db.json?%s", devdocs_cdn_url, entry.slug, entry.mtime)
 
-    notify.log("Installing " .. alias .. " documentation...")
+    notify.log((is_update and "Updating " or "Installing ") .. alias .. " documentation...")
     curl.get(doc_url, {
       callback = function(response)
         doc_path:write(response.body, "w", 438)
-        notify.log(alias .. " documentation has been installed")
+        notify.log(alias .. " documentation has been " .. (is_update and "updated" or "installed"))
       end,
       on_error = function(error)
         notify.log_err(
@@ -80,7 +80,7 @@ M.install = function(entry, verbose)
   end
 end
 
-M.install_args = function(args, verbose)
+M.install_args = function(args, verbose, is_update)
   local content = registery_path:read()
   local parsed = vim.fn.json_decode(content)
 
@@ -98,7 +98,7 @@ M.install_args = function(args, verbose)
     if vim.tbl_isempty(data) then
       notify.log_err("No documentation available for " .. arg)
     else
-      M.install(data, verbose)
+      M.install(data, verbose, is_update)
     end
   end
 end
