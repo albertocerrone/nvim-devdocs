@@ -109,8 +109,32 @@ M.uninstall = function(alias)
   if not file_path:exists() then
     notify.log(alias .. " documentation is already uninstalled")
   else
+    local index = index_path:read()
+    local parsed = vim.fn.json_decode(index)
+
+    parsed[alias] = nil
+
+    if vim.tbl_isempty(parsed) then
+      index_path:write("{}", "w", 438)
+    else
+      index_path:write(vim.fn.json_encode(parsed), "w", 438)
+    end
+
     file_path:rm()
     notify.log(alias .. " documentation has been uninstalled")
+  end
+end
+
+M.get_entry = function(alias, entry_path)
+  local file_path = path:new(plugin_config.dir_path, "docs", alias .. ".json")
+
+  if index_path:exists() or not file_path:exists() then
+    local content = file_path:read()
+    local parsed = vim.fn.json_decode(content)
+    local main_path = vim.split(entry_path, "#")[1]
+    local entry = { key = main_path, value = parsed[main_path] }
+
+    return entry
   end
 end
 
@@ -138,6 +162,27 @@ M.get_entries = function(alias)
   end
 
   table.insert(entries, { name = "index", path = "index", value = docs_decoded["index"] })
+
+  return entries
+end
+
+M.get_all_entries = function()
+  if not index_path:exists() then return end
+
+  local entries = {}
+  local index_content = index_path:read()
+  local index_parsed = vim.fn.json_decode(index_content)
+
+  for alias, index in pairs(index_parsed) do
+    for _, doc_entry in ipairs(index.entries) do
+      local entry = {
+        name = string.format("[%s] %s", alias, doc_entry.name),
+        alias = alias,
+        path = doc_entry.path,
+      }
+      table.insert(entries, entry)
+    end
+  end
 
   return entries
 end

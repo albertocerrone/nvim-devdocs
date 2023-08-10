@@ -16,8 +16,8 @@ M.setup = function(opts)
   cmd("DevdocsFetch", M.fetch_registery, {})
   cmd("DevdocsInstall", M.install_doc, { nargs = "*", complete = completion.get_non_installed })
   cmd("DevdocsUninstall", M.uninstall_doc, { nargs = "*", complete = completion.get_installed })
-  cmd("DevdocsOpen", M.open_doc, { nargs = 1, complete = completion.get_installed })
-  cmd("DevdocsOpenFloat", M.open_doc_float, { nargs = 1, complete = completion.get_installed })
+  cmd("DevdocsOpen", M.open_doc, { nargs = "?", complete = completion.get_installed })
+  cmd("DevdocsOpenFloat", M.open_doc_float, { nargs = "?", complete = completion.get_installed })
 end
 
 return M

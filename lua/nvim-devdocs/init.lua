@@ -29,27 +29,33 @@ M.uninstall_doc = function(args)
   end
 end
 
--- TODO: Search globally when no args provided
-
 M.open_doc = function(args)
-  local arg = args.fargs[1]
-  local entries = operations.get_entries(arg)
-
-  if entries then
-    pickers.open_doc_entry_picker(entries, false)
+  if vim.tbl_isempty(args.fargs) then
+    pickers.global_search_picker(false)
   else
-    notify.log_err(arg .. " documentation is not installed")
+    local arg = args.fargs[1]
+    local entries = operations.get_entries(arg)
+
+    if entries then
+      pickers.open_doc_entry_picker(entries, false)
+    else
+      notify.log_err(arg .. " documentation is not installed")
+    end
   end
 end
 
 M.open_doc_float = function(args)
-  local arg = args.fargs[1]
-  local entries = operations.get_entries(arg)
-
-  if entries then
-    pickers.open_doc_entry_picker(entries, true)
+  if vim.tbl_isempty(args.fargs) then
+    pickers.global_search_picker(true)
   else
-    notify.log_err(arg .. " documentation is not installed")
+    local arg = args.fargs[1]
+    local entries = operations.get_entries(arg)
+
+    if entries then
+      pickers.open_doc_entry_picker(entries, false)
+    else
+      notify.log_err(arg .. " documentation is not installed")
+    end
   end
 end
 
