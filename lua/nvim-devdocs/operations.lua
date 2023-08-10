@@ -24,8 +24,8 @@ M.install = function(entry, verbose)
 
     notify.log("Installing " .. alias .. " documentation...")
     curl.get(url, {
-      callback = function(res)
-        file_path:write(res.body, "w", 438)
+      callback = function(response)
+        file_path:write(response.body, "w", 438)
         notify.log("Documentation for " .. alias .. " has been installed")
       end,
       on_error = function(error)

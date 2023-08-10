@@ -10,16 +10,16 @@ local plugin_config = require("nvim-devdocs.config").get()
 
 local devdocs_site_url = "https://devdocs.io"
 
-M.get_available_docs = function()
+M.fetch_registery = function()
   notify.log("Fetching Devdocs registery...")
   curl.get(devdocs_site_url .. "/docs.json", {
-    callback = function(res)
+    callback = function(response)
       local dir_path = path:new(plugin_config.dir_path)
       local file_path = path:new(plugin_config.dir_path, "registery.json")
 
       if not dir_path:exists() then dir_path:mkdir() end
 
-      file_path:write(res.body, "w", 438)
+      file_path:write(response.body, "w", 438)
       notify.log("Devdocs registery has been successfully written to the disk")
     end,
     on_error = function(error)
@@ -48,33 +48,27 @@ M.uninstall_doc = function(args)
   end
 end
 
-M.open_doc = function(args)
-  if vim.tbl_isempty(args.fargs) then
-    -- TODO
-  else
-    local arg = args.fargs[1]
-    local entries = operations.get_entries(arg)
+-- TODO: Search globally when no args provided
 
-    if entries then
-      pickers.open_doc_entry_picker(entries, false)
-    else
-      notify.log_err(arg .. " documentation is not installed")
-    end
+M.open_doc = function(args)
+  local arg = args.fargs[1]
+  local entries = operations.get_entries(arg)
+
+  if entries then
+    pickers.open_doc_entry_picker(entries, false)
+  else
+    notify.log_err(arg .. " documentation is not installed")
   end
 end
 
 M.open_doc_float = function(args)
-  if vim.tbl_isempty(args.fargs) then
-    -- TODO
-  else
-    local arg = args.fargs[1]
-    local entries = operations.get_entries(arg)
+  local arg = args.fargs[1]
+  local entries = operations.get_entries(arg)
 
-    if entries then
-      pickers.open_doc_entry_picker(entries, true)
-    else
-      notify.log_err(arg .. " documentation is not installed")
-    end
+  if entries then
+    pickers.open_doc_entry_picker(entries, true)
+  else
+    notify.log_err(arg .. " documentation is not installed")
   end
 end
 

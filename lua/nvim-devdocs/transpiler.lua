@@ -43,6 +43,8 @@ local tag_mappings = {
   sup = { left = "^", right = "^" },
   blockquote = { left = "> " },
   summary = { left = "<", right = ">" },
+
+  -- TODO: Handle these correctly
   math = { left = "```math\n", right = "\n```" },
   annotation = { left = "[", right = "]" },
   semantics = {},
@@ -58,8 +60,10 @@ local tag_mappings = {
   hr = { right = "---" },
 }
 
--- exceptions, table -> child
 local skipable_tag = {
+  "input",
+
+  -- exceptions, table -> child
   "tr",
   "td",
   "th",
@@ -205,7 +209,7 @@ M.html_to_md = function(html)
         if parent_tag_name == "ol" then
           local siblings = self:filter_tag_children(parent_node)
           for i, sibling in ipairs(siblings) do
-            if node:equal(sibling) then result = i - 1 .. ". " .. result .. "\n" end
+            if node:equal(sibling) then result = i .. ". " .. result .. "\n" end
           end
         end
       else
